@@ -76,12 +76,12 @@ The starting point was the paper "visit form" a clinic would use, which holds pa
 
 `03_constraint_tests.sql` runs twelve invalid operations. Each one should be rejected with the error noted in the script, and the final checks confirm that no data was changed.
 
-Screenshots in `evidence/`:
+Evidence in `evidence/` (run on my laptop, MySQL 8.0.46, using the MySQL command-line client):
 
-- [ ] `schema_created.png` — `SHOW TABLES;` after running the schema
-- [ ] `seed_verification.png` — row counts and invoice balances
-- [ ] `constraint_tests_output.png` — Output panel showing all 12 rejections
-- [ ] `eer_diagram_workbench.png` — Database → Reverse Engineer in Workbench, then File → Export → Export as PNG
+- [x] `schema_created.txt`: `SHOW TABLES;` after running the schema (20 tables + `v_invoice_balance`)
+- [x] `seed_verification.txt`: row counts and invoice balances (0 / 6,750 / 0 / 27,100)
+- [x] `constraint_tests_output.txt`: all 12 violations rejected, followed by the unchanged-data checks
+- [x] `eer_diagram_workbench.png`: Workbench Database → Reverse Engineer → Export as PNG. It was captured after Portfolio 3, so `appointment` also shows the `active_start` generated column added there.
 
 ## Known limitations (addressed in later portfolios)
 
