@@ -31,13 +31,15 @@ VALUES (2, 1, 1, '2026-11-20 10:00:00', '2026-11-20 09:30:00');
 
 -- T5 UNIQUE: double-booking a doctor for the same start time
 --    Expected: Error 1062 Duplicate entry for key 'appointment.uq_appt_doctor_slot'
+--    (after Portfolio 3 setup the key is named 'appointment.uq_appt_doctor_active')
 INSERT INTO appointment (patient_id, doctor_id, branch_id, scheduled_start, scheduled_end)
 VALUES (7, 1, 1, '2026-11-16 09:00:00', '2026-11-16 09:30:00');
 
 -- T6 Foreign key: appointment for a patient who does not exist
+--    (999999 is far above any generated patient_id; Portfolio 2 creates IDs up to ~20,008)
 --    Expected: Error 1452 Cannot add or update a child row: a foreign key constraint fails (fk_appt_patient)
 INSERT INTO appointment (patient_id, doctor_id, branch_id, scheduled_start, scheduled_end)
-VALUES (9999, 1, 1, '2026-11-20 10:00:00', '2026-11-20 10:30:00');
+VALUES (999999, 1, 1, '2026-11-20 10:00:00', '2026-11-20 10:30:00');
 
 -- T7 Trigger: a receptionist (staff_id 5) cannot be registered as a doctor
 --    Expected: Error 1644 Staff member must have role DOCTOR ...
