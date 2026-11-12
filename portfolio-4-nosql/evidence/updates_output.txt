@@ -1,0 +1,258 @@
+
+======================================================================
+U1 Record a lab result (atomic single-document update)
+======================================================================
+{
+  _id: 3,
+  lab_orders: [
+    {
+      result: {
+        unit: '%',
+        value: '34',
+        abnormal: true,
+        resulted_at: ISODate('2026-11-03T11:10:00.000Z'),
+        performed_by: 8,
+        reference_range: '36-50'
+      },
+      status: 'COMPLETED',
+      test_code: 'PCV',
+      test_name: 'Packed Cell Volume',
+      ordered_at: ISODate('2026-11-03T10:20:00.000Z'),
+      lab_order_id: 3
+    },
+    {
+      status: 'ORDERED',
+      test_code: 'URN',
+      test_name: 'Urinalysis',
+      ordered_at: ISODate('2026-11-03T10:20:00.000Z'),
+      lab_order_id: 5
+    }
+  ]
+}
+{
+  acknowledged: true,
+  insertedId: null,
+  matchedCount: 1,
+  modifiedCount: 1,
+  upsertedCount: 0
+}
+{
+  _id: 3,
+  lab_orders: [
+    {
+      result: {
+        unit: '%',
+        value: '34',
+        abnormal: true,
+        resulted_at: ISODate('2026-11-03T11:10:00.000Z'),
+        performed_by: 8,
+        reference_range: '36-50'
+      },
+      status: 'COMPLETED',
+      test_code: 'PCV',
+      test_name: 'Packed Cell Volume',
+      ordered_at: ISODate('2026-11-03T10:20:00.000Z'),
+      lab_order_id: 3
+    },
+    {
+      status: 'COMPLETED',
+      test_code: 'URN',
+      test_name: 'Urinalysis',
+      ordered_at: ISODate('2026-11-03T10:20:00.000Z'),
+      lab_order_id: 5,
+      result: {
+        value: 'Protein trace, glucose negative',
+        abnormal: false,
+        resulted_at: ISODate('2026-11-12T17:40:25.865Z'),
+        performed_by: 8
+      }
+    }
+  ]
+}
+
+======================================================================
+U2 Schema evolution: a new field on new documents only
+======================================================================
+{
+  acknowledged: true,
+  insertedId: 900001
+}
+encounters with telemedicine field: 1
+encounters without it:              95744
+{
+  _id: 6,
+  hospital_no: 'LC-000006',
+  visit_summary: {
+    visits: 1,
+    last_visit: ISODate('2026-10-21T15:00:00.000Z')
+  }
+}
+
+======================================================================
+U3 Validation rejects invalid documents
+======================================================================
+  visit_type 'SURGERY' (not in enum): REJECTED  code 121 
+[
+  {
+    operatorName: 'properties',
+    propertiesNotSatisfied: [
+      {
+        propertyName: 'visit_type',
+        details: [
+          {
+            operatorName: 'enum',
+            specifiedAs: {
+              enum: [
+                'GENERAL',
+                'PAEDIATRIC',
+                'MEDICAL',
+                'ANTENATAL'
+              ]
+            },
+            reason: 'value was not found in enum',
+            consideredValue: 'SURGERY'
+          }
+        ]
+      }
+    ]
+  }
+]
+  no diagnosis (minItems 1): REJECTED  code 121 
+[
+  {
+    operatorName: 'properties',
+    propertiesNotSatisfied: [
+      {
+        propertyName: 'diagnoses',
+        details: [
+          {
+            operatorName: 'minItems',
+            specifiedAs: {
+              minItems: 1
+            },
+            reason: 'array did not match specified length',
+            consideredValue: [],
+            numberOfItems: 0
+          }
+        ]
+      }
+    ]
+  }
+]
+  temperature 52 C (maximum 45): REJECTED  code 121 
+[
+  {
+    operatorName: 'properties',
+    propertiesNotSatisfied: [
+      {
+        propertyName: 'vitals',
+        details: [
+          {
+            operatorName: 'properties',
+            propertiesNotSatisfied: [
+              {
+                propertyName: 'temperature_c',
+                details: [
+                  {
+                    operatorName: 'maximum',
+                    specifiedAs: {
+                      maximum: 45
+                    },
+                    reason: 'comparison failed',
+                    consideredValue: 52
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]
+  hospital_no 'ABC123' (pattern): REJECTED  code 121 
+[
+  {
+    operatorName: 'properties',
+    propertiesNotSatisfied: [
+      {
+        propertyName: 'hospital_no',
+        details: [
+          {
+            operatorName: 'pattern',
+            specifiedAs: {
+              pattern: '^LC-[0-9]{6}$'
+            },
+            reason: 'regular expression did not match',
+            consideredValue: 'ABC123'
+          }
+        ]
+      }
+    ]
+  }
+]
+  negative stock: REJECTED  code 121 
+[
+  {
+    operatorName: 'properties',
+    propertiesNotSatisfied: [
+      {
+        propertyName: 'quantity_on_hand',
+        details: [
+          {
+            operatorName: 'minimum',
+            specifiedAs: {
+              minimum: 0
+            },
+            reason: 'comparison failed',
+            consideredValue: -5
+          }
+        ]
+      }
+    ]
+  }
+]
+
+======================================================================
+U4 Multi-document transaction: dispense prescription 4
+======================================================================
+Replica set: atlas-26pdm4-shard-0
+  stock before:
+    LEK-3: 450
+    LEK-4: 700
+    LEK-5: 25
+  (a) prescription 4: COMMITTED
+  stock after (a):
+    LEK-3: 420
+    LEK-4: 640
+    LEK-5: 25
+{
+  _id: 4,
+  prescriptions: [
+    {
+      status: 'DISPENSED',
+      prescription_id: 4
+    },
+    {
+      status: 'DISPENSED',
+      prescription_id: 5
+    },
+    {
+      status: 'ISSUED',
+      prescription_id: 6
+    },
+    {
+      status: 'DISPENSED',
+      prescription_id: 7
+    },
+    {
+      status: 'ISSUED',
+      prescription_id: 8
+    }
+  ]
+}
+  (b) impossible quantity: ABORTED — Insufficient stock for medication 5
+  stock after (b) — unchanged from (a):
+    LEK-3: 420
+    LEK-4: 640
+    LEK-5: 25
