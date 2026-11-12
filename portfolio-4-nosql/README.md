@@ -235,7 +235,7 @@ In a live system, changes would flow from MySQL to MongoDB through change data c
 - [ ] `import_output.png`: collection counts (20,008 / 95,745 / 14 / 4,800)
 - [x] `atlas_cluster_overview.png`: cluster, version 8.0.37, data size 116.86 MB / 512 MB
 - [x] `paediatric_document.png`: paediatric vitals (`resp_rate_pm`, no `bp`)
-- [ ] `antenatal_document.png`: antenatal vitals (`gestational_age_weeks`, `fetal_heart_rate_bpm`, `fundal_height_cm`)
+- [x] `antenatal_document.png`: encounter 363, female patient aged 38 at 20 weeks; antenatal vitals (`gestational_age_weeks`, `fetal_heart_rate_bpm`, `fundal_height_cm`)
 - [ ] `compass_validation.png`: Compass → encounters → Validation tab
 - [x] `updates_output.txt`
 - [x] `queries_output.txt`, `timeseries_output.txt` (final run, after the timezone label fix)
