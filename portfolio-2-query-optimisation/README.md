@@ -135,7 +135,7 @@ The two extra appointment indexes make bulk inserts about **32% slower** (4,250 
 - [x] `baseline_plans.txt`: full output of `02_baseline_plans.sql`
 - [x] `optimised_plans.txt`: full output of `04_optimised_plans.sql`
 - [x] `index_cost.txt`: output of `05_index_cost.sql`
-- [ ] `q2_visual_explain_before.png` / `q2_visual_explain_after.png`: Workbench Visual Explain for Q2 (original vs rewritten)
+- [x] `q2_visual_explain_before.png` / `q2_visual_explain_after.png`: Workbench Visual Explain for Q2. Before: Non-Unique Key Lookup, 59,860 rows, query cost 27,393. After: Index Range Scan, 160 rows, query cost 128 (~214× lower).
 - [x] `indexes_after.txt`: index list from the end of `03_create_indexes.sql`; `fk_appt_branch` has gone
 
 ## 9. My notes
