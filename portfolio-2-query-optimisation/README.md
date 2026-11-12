@@ -65,16 +65,16 @@ Appointment mix: 80% completed, 10% cancelled, 10% no-show. Of the patients, 60%
 
 ## 5. Results summary
 
-Timings are the top-level `actual time` from `EXPLAIN ANALYZE` (ms, last row produced). They come from a test run on MySQL 8.0.46. **Replace them with the figures from your own run** (`evidence/baseline_plans.txt` and `evidence/optimised_plans.txt`); run each script 2–3 times and use the median.
+Timings are the top-level `actual time` from `EXPLAIN ANALYZE` (ms, last row produced), from my run on MySQL 8.0.46 on my own laptop (`evidence/baseline_plans.txt` and `evidence/optimised_plans.txt`). Plan shapes and row counts are reproducible because the data is deterministic; milliseconds vary from run to run.
 
 | Query | Before: access path | Before (ms) | After: access path | After (ms) | Change |
 |---|---|---:|---|---:|---|
-| Q1 | Full table scan of 20,008 patients + sort | 6.6 | Index range scan on `idx_patient_name`, 62 rows, no sort | 0.34 | ~19× faster |
-| Q2 | Reads all 60,003 branch-2 rows via FK index, applies `DATE()` to each | 60 | Rewrite + `idx_appt_branch_start`: range scan of exactly 160 rows | 1.0 | ~60× faster |
-| Q3 | Full scan of 95,744 invoices; hash join with no condition | 94 | Range scan on `idx_invoice_issued` + aggregate-first rewrite | 71 | ~25% faster |
-| Q4 | Full index scan of 120,007 entries + row lookups | 111 | Covering index range scan, 29,440 entries, no row lookups | 17 | ~6× faster |
-| Q5 | Full scan of 38,241 orders + sort of 1,104 rows | 8.6 | Index range scan, stops after 50 rows, no sort | 0.8 | ~10× faster |
-| Q6 | — | — | All three formulations → same nested-loop anti-join | 23–25 | No difference |
+| Q1 | Full table scan of 20,008 patients + sort | 28.2 | Index range scan on `idx_patient_name`, 62 rows, no sort | 0.30 | ~95× faster |
+| Q2 | Reads all 60,003 branch-2 rows via FK index, applies `DATE()` to each | 149 | Rewrite + `idx_appt_branch_start`: range scan of exactly 160 rows | 1.2 | ~124× faster |
+| Q3 | Full scan of 95,744 invoices; hash join with no condition | 219 | Index alone: **391 (slower)**; index + aggregate-first rewrite: 201 | 201 | ~8% faster than baseline; ~2× faster than index alone |
+| Q4 | Full index scan of 120,007 entries + row lookups | 372 | Covering index range scan, 29,440 entries, no row lookups | 62.5 | ~6× faster |
+| Q5 | Full scan of 38,241 orders + sort of 1,104 rows | 24.1 | Index range scan, stops after 50 rows, no sort | 1.6 | ~15× faster |
+| Q6 | — | — | All three formulations → same nested-loop anti-join | 69–90 | Same plan for all three |
 
 ## 6. Analysis
 
@@ -82,25 +82,25 @@ Timings are the top-level `actual time` from `EXPLAIN ANALYZE` (ms, last row pro
 **Before.** No index starts with `last_name`, so MySQL reads all 20,008 patient rows, filters them down to 62 and then sorts them (`Table scan` → `Filter` → `Sort`).
 **Fix.** `idx_patient_name (last_name, first_name)`. The equality column comes first, then the column used for the prefix range and the `ORDER BY`.
 **After.** `Index range scan ... over (last_name = 'Okafor' AND 'Chi' <= first_name <= 'Chi…')`. Only the 62 matching index entries are read, and the sort step disappears because the index is already in `first_name` order.
-**Counter-example.** `LIKE '%kafor'` still causes a full scan, even with the index. A B-tree is sorted from the first character, so a leading wildcard gives the optimiser no starting point.
+**Counter-example.** `LIKE '%kafor'` still causes a full scan of all 20,008 rows (20 ms), even with the index. A B-tree is sorted from the first character, so a leading wildcard gives the optimiser no starting point.
 
 ### Q2 — A function on the column defeats the index (sargability)
 **Before.** The only usable index is the foreign-key index on `branch_id`. MySQL fetches all 60,003 branch-2 appointments and evaluates `DATE(scheduled_start)` on each to keep 160.
-**Step 1, index only.** After adding `idx_appt_branch_start (branch_id, scheduled_start)`, the original SQL uses the new index but still reads all branch-2 entries (estimate ≈ 59,893 rows). The `scheduled_start` part of the index is useless because the column is wrapped in `DATE()`. Index Condition Pushdown made the per-row test cheaper (60 ms → 8 ms), but the amount of work is the same.
+**Step 1, index only.** After adding `idx_appt_branch_start (branch_id, scheduled_start)`, the original SQL uses the new index but still reads all branch-2 entries (estimate ≈ 59,893 rows). The `scheduled_start` part of the index is useless because the column is wrapped in `DATE()`. Index Condition Pushdown made the per-row test cheaper (149 ms → 37 ms), but the amount of work is the same.
 **Step 2, rewrite.** `scheduled_start >= '2026-09-15' AND scheduled_start < '2026-09-16'` returns the same rows (the half-open range also covers times such as 23:59:59). The plan becomes `Index range scan over (branch_id = 2 AND '2026-09-15' <= scheduled_start < '2026-09-16')`, and the estimate falls from ~60,000 rows to exactly 160.
 **Lesson.** An index only helps if the predicate is written so the optimiser can use it. Here the rewrite mattered more than the index.
 **Side effect.** Because the new index starts with `branch_id`, InnoDB silently dropped its automatic FK index `fk_appt_branch`, which `SHOW INDEX` confirms. `06_reset_indexes.sql` therefore recreates it before dropping the new index.
 
-### Q3 — An index alone did not help much
+### Q3 — The index alone made it slower
 **Before.** A full scan of 95,744 invoices keeps 7,672 for September. The optimiser badly underestimated the join size (estimated 1,333 rows; actual 15,344). It joined `branch` early with a **hash join with no join condition**, which pairs every invoice with both branches before discarding half the rows.
-**Step 1, index.** `idx_invoice_issued` turned the invoice access into a range scan (7,672 rows read instead of 95,744), but total time did not improve (94 → 116 ms). The join still pushed 32,326 rows through the plan, double the 16,163 needed.
-**Step 2, rewrite.** Aggregating by `a.branch_id` in a derived table first, then joining the 2-row `branch` table to the 6 summary rows, removes the cross join: 16,163 rows flow through and the total falls to ~71 ms.
-**Lesson.** The bottleneck was join order, not data access. Reading the plan, not just adding an index, found the real problem. The remaining cost is ~16,000 primary-key lookups through `encounter` → `appointment` to find the branch. Storing `branch_id` on `invoice` would remove that, but it would introduce a transitive dependency that Portfolio 1 deliberately avoided. For one month of data the normalised design is the better trade-off.
+**Step 1, index.** `idx_invoice_issued` turned the invoice access into a range scan (7,672 rows read instead of 95,744), yet the whole query got **slower: 219 → 391 ms**. The optimiser still cross-joins `branch` with a hash join that has no join condition, so every September invoice is paired with both branches: 15,344 appointment lookups instead of 7,672, half of them thrown away by the `a.branch_id = b.branch_id` filter. A cheaper first step did not help, because the expensive part was later in the plan.
+**Step 2, rewrite.** Aggregating by `a.branch_id` in a derived table first, then joining the 2-row `branch` table to the 6 summary rows, removes the cross join: 7,672 appointment lookups, and the total falls to **201 ms**. That is about twice as fast as step 1, and slightly faster than the original baseline.
+**Lesson.** The bottleneck was join order, not data access. An index can make a query slower, and only reading the plan showed why. The remaining cost is ~16,000 primary-key lookups through `encounter` → `appointment` to find the branch. Storing `branch_id` on `invoice` would remove that, but it would introduce a transitive dependency that Portfolio 1 deliberately avoided. For one month of data the normalised design is the better trade-off.
 
 ### Q4 — Covering index
-**Before.** MySQL scanned the whole `uq_appt_doctor_slot` index (120,007 entries) because it is ordered by doctor, which suits the `GROUP BY`. It still had to fetch every table row to read `status` and test the date (111 ms).
+**Before.** MySQL scanned the whole `uq_appt_doctor_slot` index (120,007 entries) because it is ordered by doctor, which suits the `GROUP BY`. It still had to fetch every table row to read `status` and test the date (372 ms).
 **Fix.** `idx_appt_start_doctor_status (scheduled_start, doctor_id, status)` contains every column the query reads.
-**After.** `Covering index range scan` reads only the 29,440 entries for the quarter and never touches the table rows (17 ms). Grouping now uses a small temporary table of 20 doctors, which costs far less than the row lookups it replaces.
+**After.** `Covering index range scan` reads only the 29,440 entries for the quarter and never touches the table rows (62.5 ms). Grouping now uses a small temporary table of 20 doctors, which costs far less than the row lookups it replaces.
 
 ### Q5 — Index that satisfies filter, ORDER BY and LIMIT together
 **Before.** A full scan of 38,241 orders finds the 1,104 that are overdue and sorts them all to return 50.
@@ -108,35 +108,35 @@ Timings are the top-level `actual time` from `EXPLAIN ANALYZE` (ms, last row pro
 **After.** MySQL reads index entries in order and stops after 50 (`Limit` sits directly above the `Index range scan`; no `Sort`). The work no longer grows with table size.
 
 ### Q6 — The optimiser rewrites subqueries
-`NOT IN`, `NOT EXISTS` and `LEFT JOIN … IS NULL` all produce the same **Nested loop antijoin**: for each patient, probe `fk_appt_patient` and stop at the first match (23–25 ms, 39 patients). This only works because `appointment.patient_id` is `NOT NULL`. If it were nullable, `NOT IN` would return no rows whenever the subquery contained a NULL, so `NOT EXISTS` is the safer habit. When the FK index is hidden with `IGNORE INDEX`, the optimiser switches strategy: it scans all 120,007 appointments once, builds a de-duplicated temporary table (`Materialize with deduplication`), then probes that (~58 ms).
+`NOT IN`, `NOT EXISTS` and `LEFT JOIN … IS NULL` all produce the same **Nested loop antijoin**: for each patient, probe `fk_appt_patient` and stop at the first match (69–90 ms, 39 patients). This only works because `appointment.patient_id` is `NOT NULL`. If it were nullable, `NOT IN` would return no rows whenever the subquery contained a NULL, so `NOT EXISTS` is the safer habit. When the FK index is hidden with `IGNORE INDEX`, the optimiser switches strategy: it scans all 120,007 appointments once, builds a de-duplicated temporary table (`Materialize with deduplication`), then probes that (134 ms).
 
 ### Cost of the indexes (`05_index_cost.sql`)
-| Measure | Result (test run) |
+| Measure | Result (my run) |
 |---|---|
 | Space: the two new `appointment` indexes | 3.5 MB each (table's PK/clustered data 8.5 MB) |
 | Space: `idx_patient_name`, `idx_invoice_issued`, `idx_laborder_status_ordered` | 0.5 MB, 2.5 MB, 1.5 MB |
-| Insert 120,007 appointments, with Portfolio 2 indexes | ≈ 1,550 ms |
-| Insert 120,007 appointments, without them | ≈ 1,200 ms |
+| Insert 120,007 appointments, with Portfolio 2 indexes | 4,250 ms |
+| Insert 120,007 appointments, without them | 3,216 ms |
 
-The two extra appointment indexes make bulk inserts roughly **25–30% slower**. The clinic writes one appointment row per booking but reads appointment lists constantly, so the trade-off is worthwhile. A low-write, high-read workload is exactly where secondary indexes pay off. Indexes I considered and did **not** add:
+The two extra appointment indexes make bulk inserts about **32% slower** (4,250 vs 3,216 ms). The clinic writes one appointment row per booking but reads appointment lists constantly, so the trade-off is worthwhile. A low-write, high-read workload is exactly where secondary indexes pay off. Indexes I considered and did **not** add:
 - An index on `invoice.status`: only 4 values, so it is too unselective to help.
 - A second index on `encounter.started_at`: no workload query needed it.
 
 ## 7. Key lessons
 
 1. **Read the plan, not just the clock.** `EXPLAIN ANALYZE` shows both the optimiser's estimates and the actual rows. The large gap in Q3 (1,333 estimated vs 15,344 actual) explained its poor join choice.
-2. **Write predicates the optimiser can use.** Q2 improved 60× mostly because of a rewrite, not because of an index.
+2. **Write predicates the optimiser can use.** Q2 improved about 124× mostly because of a rewrite, not because of an index. In Q3 the index on its own even made things worse.
 3. **Design indexes for queries:** equality columns first, then the range/sort column, then any columns that make the index covering.
-4. **Indexes have a cost.** They use extra disk space and slow inserts by roughly a quarter, so each one must be justified by a real query.
+4. **Indexes have a cost.** They use extra disk space and slowed inserts by about a third, so each one must be justified by a real query.
 
 ## 8. Evidence checklist (`evidence/`)
 
-- [ ] `bulk_data_counts.png`: row counts and the zero-row invoice check from `01_bulk_data.sql`
-- [ ] `baseline_plans.txt`: full output of `02_baseline_plans.sql`
-- [ ] `optimised_plans.txt`: full output of `04_optimised_plans.sql`
-- [ ] `index_cost.txt`: output of `05_index_cost.sql`
+- [x] `bulk_data_counts.txt`: row counts from `01_bulk_data.sql` (the invoice/balance check returned no rows)
+- [x] `baseline_plans.txt`: full output of `02_baseline_plans.sql`
+- [x] `optimised_plans.txt`: full output of `04_optimised_plans.sql`
+- [x] `index_cost.txt`: output of `05_index_cost.sql`
 - [ ] `q2_visual_explain_before.png` / `q2_visual_explain_after.png`: Workbench Visual Explain for Q2 (original vs rewritten)
-- [ ] `indexes_after.png`: index list from the end of `03_create_indexes.sql`, showing `fk_appt_branch` has gone
+- [x] `indexes_after.txt`: index list from the end of `03_create_indexes.sql`; `fk_appt_branch` has gone
 
 ## 9. My notes
 
