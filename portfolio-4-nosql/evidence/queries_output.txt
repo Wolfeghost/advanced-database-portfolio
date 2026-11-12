@@ -1,0 +1,373 @@
+
+======================================================================
+Collection sizes
+======================================================================
+patients:   20008
+encounters: 95745
+avg encounter document size: 1001 bytes
+
+======================================================================
+M1 Patient history (patient_id 1234)
+======================================================================
+Sample result (most recent visit):
+[
+  {
+    _id: 78208,
+    branch: {
+      code: 'IKJ'
+    },
+    doctor: {
+      name: 'Dr Adaeze Okonkwo'
+    },
+    vitals: {
+      bp: {
+        systolic: 127,
+        diastolic: 82
+      }
+    },
+    diagnoses: [
+      {
+        icd10: 'L30.9',
+        primary: false,
+        description: 'Dermatitis, unspecified'
+      },
+      {
+        icd10: 'Z34.9',
+        primary: true,
+        description: 'Supervision of normal pregnancy, unspecified'
+      }
+    ],
+    lab_orders: [],
+    started_at: ISODate('2026-08-14T08:34:00.000Z'),
+    prescriptions: []
+  }
+]
+{
+  query: 'M1 before index',
+  plan: 'SORT <- PROJECTION_DEFAULT <- COLLSCAN',
+  returned: 6,
+  keysExamined: 0,
+  docsExamined: 95745,
+  ms: 148
+}
+
+======================================================================
+M2 Abnormal lab results, Lekki, last 30 days
+======================================================================
+matching encounters: 386
+[
+  {
+    _id: 95714,
+    doctor: {
+      name: 'Dr Folake Ayoola'
+    },
+    patient: {
+      name: 'Yusuf Okonkwo',
+      hospital_no: 'LC-015691'
+    },
+    started_at: ISODate('2026-10-21T13:34:00.000Z'),
+    abnormal_results: [
+      {
+        result: {
+          value: '11.5000',
+          abnormal: true,
+          resulted_at: ISODate('2026-10-21T14:25:00.000Z'),
+          performed_by: 8,
+          reference_range: 'See report'
+        },
+        status: 'COMPLETED',
+        test_code: 'FBC',
+        test_name: 'Full Blood Count',
+        ordered_at: ISODate('2026-10-21T13:44:00.000Z'),
+        lab_order_id: 38230
+      }
+    ]
+  }
+]
+{
+  query: 'M2 before index',
+  plan: 'SORT <- PROJECTION_DEFAULT <- COLLSCAN',
+  returned: 386,
+  keysExamined: 0,
+  docsExamined: 95745,
+  ms: 92
+}
+
+======================================================================
+M3 Antenatal high blood pressure screen
+======================================================================
+flagged visits: 311
+[
+  {
+    _id: 39698,
+    vitals: {
+      bp: {
+        systolic: 169,
+        diastolic: 100
+      },
+      gestational_age_weeks: 25
+    },
+    patient: {
+      name: 'Hadiza Abdullahi',
+      hospital_no: 'LC-019909'
+    },
+    started_at: ISODate('2026-03-16T11:07:00.000Z')
+  },
+  {
+    _id: 37,
+    vitals: {
+      bp: {
+        systolic: 169,
+        diastolic: 83
+      },
+      gestational_age_weeks: 22
+    },
+    patient: {
+      name: 'Funke Adeyemi',
+      hospital_no: 'LC-014733'
+    },
+    started_at: ISODate('2025-10-12T07:38:00.000Z')
+  }
+]
+{
+  query: 'M3 before index',
+  plan: 'SORT <- PROJECTION_DEFAULT <- COLLSCAN',
+  returned: 311,
+  keysExamined: 0,
+  docsExamined: 95745,
+  ms: 88
+}
+
+======================================================================
+Creating indexes
+======================================================================
+  encounters._id_  {"_id":1}
+  encounters.ix_patient_started  {"patient.patient_id":1,"started_at":-1}
+  encounters.ix_branch_started  {"branch.code":1,"started_at":-1}
+  encounters.ix_antenatal_bp  {"vitals.bp.systolic":-1,"vitals.gestational_age_weeks":1}  partial: {"visit_type":"ANTENATAL"}
+  encounters.ix_diagnosis_started  {"diagnoses.icd10":1,"started_at":-1}
+  encounters.ix_notes_text  {"_fts":"text","_ftsx":1}
+  patients._id_  {"_id":1}
+  patients.ux_hospital_no  {"hospital_no":1}
+  patients.ix_allergies  {"allergies":1}
+
+======================================================================
+Index sizes (bytes)
+======================================================================
+{
+  _id_: 3747840,
+  ix_patient_started: 1314816,
+  ix_branch_started: 1093632,
+  ix_antenatal_bp: 94208,
+  ix_diagnosis_started: 1605632,
+  ix_notes_text: 10108928
+}
+
+======================================================================
+M1 / M2 / M3 after indexes
+======================================================================
+{
+  query: 'M1 after index',
+  plan: 'PROJECTION_DEFAULT <- FETCH <- IXSCAN(ix_patient_started)',
+  returned: 6,
+  keysExamined: 6,
+  docsExamined: 6,
+  ms: 0
+}
+{
+  query: 'M2 after index',
+  plan: 'PROJECTION_DEFAULT <- FETCH <- IXSCAN(ix_branch_started)',
+  returned: 386,
+  keysExamined: 3840,
+  docsExamined: 3840,
+  ms: 12
+}
+{
+  query: 'M3 after index',
+  plan: 'PROJECTION_DEFAULT <- FETCH <- IXSCAN(ix_antenatal_bp)',
+  returned: 311,
+  keysExamined: 342,
+  docsExamined: 311,
+  ms: 1
+}
+{
+  query: 'M3 without visit_type (cannot use partial index)',
+  plan: 'COLLSCAN',
+  returned: 311,
+  keysExamined: 0,
+  docsExamined: 95745,
+  ms: 88
+}
+
+======================================================================
+M4 Top 5 primary diagnoses per branch, last 90 days
+======================================================================
+{
+  _id: 'IKJ',
+  top5: [
+    {
+      icd10: 'D64.9',
+      description: 'Anaemia, unspecified',
+      visits: 609
+    },
+    {
+      icd10: 'A09',
+      description: 'Infectious gastroenteritis and colitis, unspecified',
+      visits: 609
+    },
+    {
+      icd10: 'L30.9',
+      description: 'Dermatitis, unspecified',
+      visits: 602
+    },
+    {
+      icd10: 'E11.9',
+      description: 'Type 2 diabetes mellitus without complications',
+      visits: 594
+    },
+    {
+      icd10: 'Z34.9',
+      description: 'Supervision of normal pregnancy, unspecified',
+      visits: 593
+    }
+  ]
+}
+{
+  _id: 'LEK',
+  top5: [
+    {
+      icd10: 'H10.9',
+      description: 'Conjunctivitis, unspecified',
+      visits: 613
+    },
+    {
+      icd10: 'Z00.0',
+      description: 'General adult medical examination',
+      visits: 605
+    },
+    {
+      icd10: 'N39.0',
+      description: 'Urinary tract infection, site not specified',
+      visits: 603
+    },
+    {
+      icd10: 'A01.0',
+      description: 'Typhoid fever',
+      visits: 598
+    },
+    {
+      icd10: 'L30.9',
+      description: 'Dermatitis, unspecified',
+      visits: 591
+    }
+  ]
+}
+
+======================================================================
+M4b Monthly malaria (B54) visits — uses multikey index
+======================================================================
+  2025-10  188
+  2025-11  538
+  2025-12  539
+  2026-01  578
+  2026-02  464
+  2026-03  554
+  2026-04  511
+  2026-05  569
+  2026-06  525
+  2026-07  585
+  2026-08  602
+  2026-09  517
+  2026-10  364
+{
+  query: 'M4b malaria by month',
+  plan: 'GROUP <- PROJECTION_COVERED <- IXSCAN(ix_diagnosis_started)',
+  returned: 13,
+  keysExamined: 6534,
+  docsExamined: 0,
+  ms: 41
+}
+
+======================================================================
+M5 Text search: 'wheeze inhaler'
+======================================================================
+[
+  {
+    _id: 41914,
+    notes: 'Patient alert and oriented. Presented with headache. Expiratory wheeze; inhaler technique reviewed. Discharged home.',
+    patient: {
+      hospital_no: 'LC-005522'
+    },
+    started_at: ISODate('2026-03-25T08:39:00.000Z'),
+    score: 1.0833333333333333
+  },
+  {
+    _id: 94545,
+    notes: 'Patient alert and oriented. Presented with follow-up. Expiratory wheeze; inhaler technique reviewed. Discharged home.',
+    patient: {
+      hospital_no: 'LC-018623'
+    },
+    started_at: ISODate('2026-10-17T09:04:00.000Z'),
+    score: 1.0833333333333333
+  }
+]
+{
+  query: 'M5 text search',
+  plan: 'PROJECTION_DEFAULT <- SORT <- TEXT_MATCH(ix_notes_text) <- TEXT_OR <- IXSCAN(ix_notes_text) <- IXSCAN(ix_notes_text)',
+  returned: 4868,
+  keysExamined: 9736,
+  docsExamined: 4868,
+  ms: 40
+}
+
+======================================================================
+M6 Penicillin-allergic patients seen in the last 30 days ($lookup)
+======================================================================
+patients on list: 644
+[
+  {
+    _id: 47,
+    name: {
+      last: 'Okoro',
+      first: 'Obinna'
+    },
+    allergies: [
+      'Penicillin',
+      'Peanuts'
+    ],
+    hospital_no: 'LC-000047',
+    last_visit: [
+      {
+        _id: 90960,
+        branch: {
+          code: 'LEK'
+        },
+        doctor: {
+          name: 'Dr Folake Ayoola'
+        },
+        diagnoses: [
+          {
+            icd10: 'R51',
+            primary: true,
+            description: 'Headache'
+          }
+        ],
+        started_at: ISODate('2026-10-03T07:36:00.000Z')
+      }
+    ]
+  }
+]
+
+======================================================================
+SUMMARY (copy into README section 6)
+======================================================================
+query                                            returned     keys     docs    ms  plan
+M1 before index                                         6        0    95745   148  SORT <- PROJECTION_DEFAULT <- COLLSCAN
+M2 before index                                       386        0    95745    92  SORT <- PROJECTION_DEFAULT <- COLLSCAN
+M3 before index                                       311        0    95745    88  SORT <- PROJECTION_DEFAULT <- COLLSCAN
+M1 after index                                          6        6        6     0  PROJECTION_DEFAULT <- FETCH <- IXSCAN(ix_patient_started)
+M2 after index                                        386     3840     3840    12  PROJECTION_DEFAULT <- FETCH <- IXSCAN(ix_branch_started)
+M3 after index                                        311      342      311     1  PROJECTION_DEFAULT <- FETCH <- IXSCAN(ix_antenatal_bp)
+M3 without visit_type (cannot use partial index)      311        0    95745    88  COLLSCAN
+M4b malaria by month                                   13     6534        0    41  GROUP <- PROJECTION_COVERED <- IXSCAN(ix_diagnosis_started)
+M5 text search                                       4868     9736     4868    40  PROJECTION_DEFAULT <- SORT <- TEXT_MATCH(ix_notes_text) <- TEXT_OR <- IXSCAN(ix_notes_text) <- IXSCAN(ix_notes_text)

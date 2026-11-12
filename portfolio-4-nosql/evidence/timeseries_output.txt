@@ -1,0 +1,62 @@
+Patients enrolled: 40
+Readings inserted: 4800
+One stored reading:
+{
+  taken_at: ISODate('2026-08-23T05:00:00.000Z'),
+  meta: {
+    device: 'BPM-1005',
+    hospital_no: 'LC-000005',
+    patient_id: 5
+  },
+  systolic: 152,
+  diastolic: 97,
+  pulse: 75
+}
+
+======================================================================
+T1 Weekly average BP, first 3 patients
+======================================================================
+  LC-000005  week of 2026-08-23  150/94  (14 readings)
+  LC-000005  week of 2026-08-30  147/93  (14 readings)
+  LC-000005  week of 2026-09-06  145/91  (14 readings)
+  LC-000005  week of 2026-09-13  143/92  (14 readings)
+  LC-000005  week of 2026-09-20  143/90  (14 readings)
+  LC-000005  week of 2026-09-27  139/88  (14 readings)
+  LC-000005  week of 2026-10-04  136/88  (14 readings)
+  LC-000005  week of 2026-10-11  132/86  (14 readings)
+  LC-000005  week of 2026-10-18  135/85  (8 readings)
+  LC-000014  week of 2026-08-23  152/95  (14 readings)
+  LC-000014  week of 2026-08-30  151/95  (14 readings)
+  LC-000014  week of 2026-09-06  154/95  (14 readings)
+  LC-000014  week of 2026-09-13  152/95  (14 readings)
+  LC-000014  week of 2026-09-20  152/94  (14 readings)
+  LC-000014  week of 2026-09-27  154/94  (14 readings)
+  LC-000014  week of 2026-10-04  152/94  (14 readings)
+  LC-000014  week of 2026-10-11  150/94  (14 readings)
+  LC-000014  week of 2026-10-18  151/94  (8 readings)
+  LC-000022  week of 2026-08-23  150/95  (14 readings)
+  LC-000022  week of 2026-08-30  146/94  (14 readings)
+  LC-000022  week of 2026-09-06  145/92  (14 readings)
+  LC-000022  week of 2026-09-13  145/92  (14 readings)
+  LC-000022  week of 2026-09-20  140/90  (14 readings)
+  LC-000022  week of 2026-09-27  140/88  (14 readings)
+  LC-000022  week of 2026-10-04  139/87  (14 readings)
+  LC-000022  week of 2026-10-11  134/87  (14 readings)
+  LC-000022  week of 2026-10-18  135/84  (8 readings)
+
+======================================================================
+T2 Patients still above 135/85 (7-day rolling average)
+======================================================================
+Patients needing review: 32 of 40
+  LC-000097  154/96
+  LC-000034  154/96
+  LC-000137  154/95
+  LC-000154  153/96
+  LC-000143  153/95
+
+======================================================================
+Storage
+======================================================================
+readings: 4800
+storage size: 4096 bytes  (nominal value on Atlas M0, not bytes per reading)
+buckets: 80  (readings are grouped per patient into buckets)
