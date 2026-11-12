@@ -1,0 +1,48 @@
+
+======================================================================
+Cardinality (distinct values) of candidate fields
+======================================================================
+documents                 : 95745
+branch.code               : 2 distinct  -> at most 2 chunks, ever
+patient.patient_id        : 19846 distinct
+started_at                : 49434 distinct (but always increasing)
+most visits by one patient: 15 (patient 519) -> no risk of a jumbo chunk
+
+======================================================================
+Data distribution across 3 shards (all 95745 encounters)
+======================================================================
+A branch.code            shard0: 47910  shard1: 47835  shard2: 0   (50.0% / 50.0% / 0.0%)  imbalance 1.50x
+B started_at (range)     shard0: 33167  shard1: 32947  shard2: 29631   (34.6% / 34.4% / 30.9%)  imbalance 1.04x
+C patient_id (hashed)    shard0: 32862  shard1: 31934  shard2: 30949   (34.3% / 33.4% / 32.3%)  imbalance 1.03x
+D branch + patient zones shard0: 47910  shard1: 23914  shard2: 23921   (50.0% / 25.0% / 25.0%)  imbalance 1.50x
+
+======================================================================
+Where NEW writes land: encounters from the last 30 days
+======================================================================
+A branch.code            shard0: 3775  shard1: 3840  shard2: 0   (49.6% / 50.4% / 0.0%)  imbalance 1.51x
+B started_at (range)     shard0: 0  shard1: 0  shard2: 7615   (0.0% / 0.0% / 100.0%)  imbalance 3.00x   <- every new visit goes to the LAST shard
+C patient_id (hashed)    shard0: 2567  shard1: 2546  shard2: 2502   (33.7% / 33.4% / 32.9%)  imbalance 1.01x
+D branch + patient zones shard0: 3775  shard1: 1915  shard2: 1925   (49.6% / 25.1% / 25.3%)  imbalance 1.49x
+
+======================================================================
+Query routing for the Portfolio 4 workload
+======================================================================
+patient 1234's encounters live on: A [0,1]  B [0,1,2]  C [0]  D [0,1]
+
+Query (filter)                                   A branch   B date     C hashed pid  D branch+pid
+M1 patient history {patient_id}                  all 3      all 3      1 (targeted)  all 3*
+M2 Lekki, last 30 days {branch, started_at}      1          1 (hot)    all 3         LEK zone (2)
+M3 antenatal BP screen {visit_type, vitals}      all 3      all 3      all 3         all 3
+M4b malaria by month {icd10, started_at range}   all 3      all 3      all 3         all 3
+* D targets 1 shard if the query also includes branch.code (the front desk knows the branch).
+
+======================================================================
+Summary
+======================================================================
+key                       all-data imbalance   new-write imbalance
+  A                       1.50                 1.51
+  B                       1.04                 3.00
+  C                       1.03                 1.01
+  D                       1.50                 1.49
+
+1.00x = perfectly even. 3.00x = everything on one shard.

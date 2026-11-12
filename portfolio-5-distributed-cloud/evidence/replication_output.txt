@@ -1,0 +1,91 @@
+
+======================================================================
+R1 Replica set topology
+======================================================================
+replica set name : atlas-26pdm4-shard-0
+primary          : ac-vnmouul-shard-00-01.oxuc9x9.mongodb.net:27017
+this connection  : ac-vnmouul-shard-00-01.oxuc9x9.mongodb.net:27017
+data-bearing members (3):
+  ac-vnmouul-shard-00-00.oxuc9x9.mongodb.net:27017   (secondary)
+  ac-vnmouul-shard-00-01.oxuc9x9.mongodb.net:27017   <- PRIMARY
+  ac-vnmouul-shard-00-02.oxuc9x9.mongodb.net:27017   (secondary)
+majority = 2 of 3 members
+server version   : 8.0.37
+
+rs.status() members:
+  ac-vnmouul-shard-00-00.oxuc9x9.mongodb.net:27017  SECONDARY  health=1  optime=2026-11-12T19:22:45.000Z
+  ac-vnmouul-shard-00-01.oxuc9x9.mongodb.net:27017  PRIMARY  health=1  optime=2026-11-12T19:22:45.000Z
+  ac-vnmouul-shard-00-02.oxuc9x9.mongodb.net:27017  SECONDARY  health=1  optime=2026-11-12T19:22:45.000Z
+
+======================================================================
+R2 Write concern: acknowledgement latency (60 inserts each)
+======================================================================
+{
+  writeConcern: '1',
+  median_ms: 127,
+  min_ms: 115,
+  max_ms: 232
+}
+{
+  writeConcern: 'majority',
+  median_ms: 201,
+  min_ms: 117,
+  max_ms: 513
+}
+{
+  writeConcern: '3',
+  median_ms: 189,
+  min_ms: 118,
+  max_ms: 559
+}
+Note: timings include the network round trip from this PC to Atlas;
+compare the DIFFERENCES between levels, not the absolute values.
+
+======================================================================
+R3 Write concern w:5 on a 3-member replica set
+======================================================================
+refused: code 100 UnsatisfiableWriteConcern — Not enough data-bearing nodes
+The server cannot promise acknowledgement from 5 members that do not exist.
+
+======================================================================
+R4 Read preference routing
+======================================================================
+  primary              served by: ac-vnmouul-shard-00-01.oxuc9x9.mongodb.net:27017   (includes PRIMARY)
+  primaryPreferred     served by: ac-vnmouul-shard-00-01.oxuc9x9.mongodb.net:27017   (includes PRIMARY)
+  secondary            served by: ac-vnmouul-shard-00-00.oxuc9x9.mongodb.net:27017, ac-vnmouul-shard-00-02.oxuc9x9.mongodb.net:27017
+  secondaryPreferred   served by: ac-vnmouul-shard-00-00.oxuc9x9.mongodb.net:27017, ac-vnmouul-shard-00-02.oxuc9x9.mongodb.net:27017
+  nearest              served by: ac-vnmouul-shard-00-02.oxuc9x9.mongodb.net:27017, ac-vnmouul-shard-00-01.oxuc9x9.mongodb.net:27017, ac-vnmouul-shard-00-00.oxuc9x9.mongodb.net:27017   (includes PRIMARY)
+
+======================================================================
+R5 Stale reads from a secondary immediately after a write (200 tries each)
+======================================================================
+  write w:1         -> secondary missed the write 0 of 200 times (0.0%)
+  write w:majority  -> secondary missed the write 0 of 200 times (0.0%)
+w:'majority' only guarantees 2 of 3 members; the secondary that serves
+the read may be the third member, so stale reads are reduced, not removed.
+
+======================================================================
+R6 Causally consistent session: read-your-writes from a secondary
+======================================================================
+  causal session: secondary missed the write 0 of 200 times
+Expected 0: the driver makes the secondary wait until it has the write.
+
+======================================================================
+R7 Failover readiness
+======================================================================
+retryWrites in connection string: true (driver default)
+If the primary fails, the remaining two members (a majority) elect a new
+primary, typically within ~10-12 seconds. With retryable writes the driver
+re-sends an interrupted write once to the new primary, and writes made
+with w:'majority' are never rolled back. A w:1 write that reached only the
+old primary CAN be rolled back. (The free M0 tier cannot trigger a test
+failover; see README section 4.)
+
+======================================================================
+Summary
+======================================================================
+  w:1         median 127 ms (min 115, max 232)
+  w:majority  median 201 ms (min 117, max 513)
+  w:3         median 189 ms (min 118, max 559)
+
+Scratch collection p5_replication_test dropped.
