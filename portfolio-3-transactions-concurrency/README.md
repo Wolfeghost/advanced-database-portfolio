@@ -143,13 +143,20 @@ Snapshot isolation does not stop this kind of read-then-write anomaly (*write sk
 
 - [x] `commit_rollback.txt`: output of `02_commit_rollback.sql` (run on my laptop, MySQL 8.0.46)
 - [x] `setup_output.txt`: routine list at the end of `01_setup.sql` (4 procedures)
-- [ ] `3_0_two_sessions.png`: A0 and B0 showing different connection IDs
-- [ ] `3_1_dirty_read.png`: B1 (1500) and B2 (2000)
-- [ ] `3_2_nonrepeatable_read.png`: B5 (RC: value changed) and B7 (RR: value unchanged)
-- [ ] `3_3_lost_update.png` and `3_3_lock_wait.png`: A8 (1950); A10 (`sys.innodb_lock_waits`) while B10 spins; A12 (1850)
-- [ ] `3_4_double_payment.png`: A15 (−6,750) and B14 error after waiting
-- [ ] `3_5_double_booking.png`: A20 (overlap), B17 error, A23 (rebooked cancelled slot)
-- [ ] `3_6_deadlock.png`: B20 error 1213 and the LATEST DETECTED DEADLOCK section from A27
+All concurrency demos were run on my laptop (MySQL 8.0.46, Workbench 8.0, two separate connections). Each file name gives the demo step and the observed value:
+
+- [x] **3.0** `3_0_session_A_connection.png` (connection 37) / `3_0_session_B_connection.png` (connection 39): two separate sessions
+- [x] **3.1 Dirty read:** `3_1_B1_dirty_read_1500.png` (READ UNCOMMITTED sees A's unsaved 1500), `3_1_B2_read_committed_2000.png`, `3_1_B3_after_rollback_2000.png`, plus session A logs
+- [x] **3.2 Non-repeatable read:** `3_2_B5_read_committed_changed_4750.png` (6750 → 4750 inside one transaction), `3_2_B7_repeatable_read_unchanged_4750.png` (snapshot stays 4750), `3_2_B_after_commit_3750.png`, plus payment logs
+- [x] **3.3 Lost update:** `3_3_A8_lost_update_1950.png` (should be 1850), `3_3_A10_lock_wait_B_waits_for_A.png` (`sys.innodb_lock_waits`: B blocked by A), `3_3_B_lock_wait_timeout_1205.png` (first attempt: B gave up after 60 s, `innodb_lock_wait_timeout`), `3_3_B_waited_13s_for_lock.png` (FOR UPDATE waited 13.8 s), `3_3_A12_after_locking_1850.png`
+- [x] **3.4 Double payment:** `3_4_A15_double_payment_minus_6750.png` (29,250 paid on 22,500), `3_4_B14_waited_then_refused_1644.png` (waited 8.7 s, then refused), `3_4_A17_safe_payment_balance_0.png`
+- [x] **3.5 Double booking:** `3_5_A20_double_booked_overlap.png` (10:00–10:30 and 10:15–10:45 both booked), `3_5_B17_waited_then_refused_overlap_B18_rebooked.png` (waited 7.0 s, refused; then rebooked the cancelled slot), `3_5_A23_cancelled_slot_rebooked.png` (`active_start` NULL on the cancelled booking)
+- [x] **3.6 Deadlock:** `3_6_B20_deadlock_error_1213.png` (B rolled back by InnoDB), `3_6_A_waited_then_committed.png` (A's update waited 5.6 s, then completed and committed)
+
+**Lessons learned while running the demos**
+- Running only part of a multi-line UPDATE in Workbench dropped its `WHERE` clause. The `chk_stock_qty` constraint blocked that accidental all-rows update.
+- Running UPDATEs without `START TRANSACTION` meant Workbench autocommitted each one, so the later `ROLLBACK` had nothing to undo.
+- Workbench's default 30-second read timeout cut off a session that was correctly waiting for a lock. I raised it to 600 s; MySQL's own `innodb_lock_wait_timeout` then ended a 60-second wait with error 1205, as designed.
 
 ## 10. My notes
 
