@@ -1,0 +1,8 @@
++--------------------------+--------------+
+| ROUTINE_NAME             | ROUTINE_TYPE |
++--------------------------+--------------+
+| sp_book_appointment      | PROCEDURE    |
+| sp_dispense_prescription | PROCEDURE    |
+| sp_p3_reset_demo         | PROCEDURE    |
+| sp_record_payment        | PROCEDURE    |
++--------------------------+--------------+

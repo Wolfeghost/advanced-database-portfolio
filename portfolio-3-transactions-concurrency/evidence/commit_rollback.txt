@@ -1,0 +1,401 @@
+--------------
+CALL sp_p3_reset_demo()
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+SELECT '== 2.1 COMMIT: dispense prescription ==' AS demo
+--------------
+
++-----------------------------------------+
+| demo                                    |
++-----------------------------------------+
+| == 2.1 COMMIT: dispense prescription == |
++-----------------------------------------+
+1 row in set (0.00 sec)
+
+--------------
+INSERT INTO prescription (encounter_id, status) VALUES (4, 'ISSUED')
+--------------
+
+Query OK, 1 row affected (0.01 sec)
+
+--------------
+SET @rx_ok = LAST_INSERT_ID()
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+INSERT INTO prescription_item (prescription_id, medication_id, dosage, frequency, duration_days, quantity) VALUES
+ (@rx_ok, 3, '1 tablet', 'Once daily',  30, 30),
+ (@rx_ok, 4, '1 tablet', 'Twice daily', 30, 60)
+--------------
+
+Query OK, 2 rows affected (0.00 sec)
+Records: 2  Duplicates: 0  Warnings: 0
+
+--------------
+SELECT 'before' AS moment, medication_id, quantity_on_hand
+FROM   pharmacy_stock WHERE branch_id = 2 AND medication_id IN (3, 4)
+--------------
+
++--------+---------------+------------------+
+| moment | medication_id | quantity_on_hand |
++--------+---------------+------------------+
+| before |             3 |              450 |
+| before |             4 |              700 |
++--------+---------------+------------------+
+2 rows in set (0.00 sec)
+
+--------------
+CALL sp_dispense_prescription(@rx_ok, 2)
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+SELECT 'after' AS moment, medication_id, quantity_on_hand          
+FROM   pharmacy_stock WHERE branch_id = 2 AND medication_id IN (3, 4)
+--------------
+
++--------+---------------+------------------+
+| moment | medication_id | quantity_on_hand |
++--------+---------------+------------------+
+| after  |             3 |              420 |
+| after  |             4 |              640 |
++--------+---------------+------------------+
+2 rows in set (0.00 sec)
+
+--------------
+SELECT prescription_id, status FROM prescription WHERE prescription_id = @rx_ok
+--------------
+
++-----------------+-----------+
+| prescription_id | status    |
++-----------------+-----------+
+|               5 | DISPENSED |
++-----------------+-----------+
+1 row in set (0.00 sec)
+
+--------------
+CALL sp_dispense_prescription(@rx_ok, 2)
+--------------
+
+ERROR 1644 (45000) at line 38: Prescription is not in ISSUED status
+--------------
+SELECT '== 2.2 ROLLBACK: cancelled stock adjustment ==' AS demo
+--------------
+
++------------------------------------------------+
+| demo                                           |
++------------------------------------------------+
+| == 2.2 ROLLBACK: cancelled stock adjustment == |
++------------------------------------------------+
+1 row in set (0.00 sec)
+
+--------------
+START TRANSACTION
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+UPDATE pharmacy_stock SET quantity_on_hand = quantity_on_hand - 100
+WHERE  branch_id = 1 AND medication_id = 2
+--------------
+
+Query OK, 1 row affected (0.00 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+
+--------------
+SELECT 'inside transaction' AS moment, quantity_on_hand            
+FROM   pharmacy_stock WHERE branch_id = 1 AND medication_id = 2
+--------------
+
++--------------------+------------------+
+| moment             | quantity_on_hand |
++--------------------+------------------+
+| inside transaction |             1900 |
++--------------------+------------------+
+1 row in set (0.00 sec)
+
+--------------
+ROLLBACK
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+SELECT 'after ROLLBACK' AS moment, quantity_on_hand                
+FROM   pharmacy_stock WHERE branch_id = 1 AND medication_id = 2
+--------------
+
++----------------+------------------+
+| moment         | quantity_on_hand |
++----------------+------------------+
+| after ROLLBACK |             2000 |
++----------------+------------------+
+1 row in set (0.00 sec)
+
+--------------
+SELECT '== 2.3 Statement error inside a transaction ==' AS demo
+--------------
+
++------------------------------------------------+
+| demo                                           |
++------------------------------------------------+
+| == 2.3 Statement error inside a transaction == |
++------------------------------------------------+
+1 row in set (0.00 sec)
+
+--------------
+START TRANSACTION
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+UPDATE pharmacy_stock SET quantity_on_hand = quantity_on_hand - 10
+WHERE  branch_id = 2 AND medication_id = 2
+--------------
+
+Query OK, 1 row affected (0.00 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+
+--------------
+UPDATE pharmacy_stock SET quantity_on_hand = quantity_on_hand - 100
+WHERE  branch_id = 2 AND medication_id = 5
+--------------
+
+ERROR 3819 (HY000) at line 69: Check constraint 'chk_stock_qty' is violated.
+--------------
+SELECT 'after the error, still inside transaction' AS moment, medication_id, quantity_on_hand
+FROM   pharmacy_stock WHERE branch_id = 2 AND medication_id IN (2, 5)
+--------------
+
++-------------------------------------------+---------------+------------------+
+| moment                                    | medication_id | quantity_on_hand |
++-------------------------------------------+---------------+------------------+
+| after the error, still inside transaction |             2 |             1490 |
+| after the error, still inside transaction |             5 |               25 |
++-------------------------------------------+---------------+------------------+
+2 rows in set (0.00 sec)
+
+--------------
+ROLLBACK
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+SELECT 'after ROLLBACK' AS moment, medication_id, quantity_on_hand
+FROM   pharmacy_stock WHERE branch_id = 2 AND medication_id IN (2, 5)
+--------------
+
++----------------+---------------+------------------+
+| moment         | medication_id | quantity_on_hand |
++----------------+---------------+------------------+
+| after ROLLBACK |             2 |             1500 |
+| after ROLLBACK |             5 |               25 |
++----------------+---------------+------------------+
+2 rows in set (0.00 sec)
+
+--------------
+SELECT '== 2.4 Atomic failure: insufficient stock ==' AS demo
+--------------
+
++----------------------------------------------+
+| demo                                         |
++----------------------------------------------+
+| == 2.4 Atomic failure: insufficient stock == |
++----------------------------------------------+
+1 row in set (0.00 sec)
+
+--------------
+INSERT INTO prescription (encounter_id, status) VALUES (4, 'ISSUED')
+--------------
+
+Query OK, 1 row affected (0.00 sec)
+
+--------------
+SET @rx_short = LAST_INSERT_ID()
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+INSERT INTO prescription_item (prescription_id, medication_id, dosage, frequency, duration_days, quantity) VALUES
+ (@rx_short, 2, '2 tablets', 'Three times daily', 5, 30),   
+ (@rx_short, 5, '5ml',       'Three times daily', 7, 40)
+--------------
+
+Query OK, 2 rows affected (0.00 sec)
+Records: 2  Duplicates: 0  Warnings: 0
+
+--------------
+CALL sp_dispense_prescription(@rx_short, 2)
+--------------
+
+ERROR 1644 (45000) at line 90: Insufficient stock: prescription not dispensed
+--------------
+SELECT medication_id, quantity_on_hand                       
+FROM   pharmacy_stock WHERE branch_id = 2 AND medication_id IN (2, 5)
+--------------
+
++---------------+------------------+
+| medication_id | quantity_on_hand |
++---------------+------------------+
+|             2 |             1500 |
+|             5 |               25 |
++---------------+------------------+
+2 rows in set (0.00 sec)
+
+--------------
+SELECT prescription_id, status FROM prescription WHERE prescription_id = @rx_short
+--------------
+
++-----------------+--------+
+| prescription_id | status |
++-----------------+--------+
+|               6 | ISSUED |
++-----------------+--------+
+1 row in set (0.00 sec)
+
+--------------
+SELECT '== 2.5 SAVEPOINT: partial rollback ==' AS demo
+--------------
+
++---------------------------------------+
+| demo                                  |
++---------------------------------------+
+| == 2.5 SAVEPOINT: partial rollback == |
++---------------------------------------+
+1 row in set (0.00 sec)
+
+--------------
+START TRANSACTION
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+INSERT INTO invoice_line (invoice_id, line_no, item_type, description, quantity, unit_price)
+VALUES (4, 5, 'OTHER', 'Wound dressing', 1, 1500.00)
+--------------
+
+Query OK, 1 row affected (0.00 sec)
+
+--------------
+SAVEPOINT after_dressing
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+INSERT INTO invoice_line (invoice_id, line_no, item_type, description, quantity, unit_price)
+VALUES (4, 6, 'OTHER', 'Nebulisation (entered in error)', 1, 4000.00)
+--------------
+
+Query OK, 1 row affected (0.00 sec)
+
+--------------
+ROLLBACK TO SAVEPOINT after_dressing
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+COMMIT
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+SELECT line_no, description, quantity * unit_price AS amount        
+FROM   invoice_line WHERE invoice_id = 4 ORDER BY line_no
+--------------
+
++---------+----------------------------------+----------+
+| line_no | description                      | amount   |
++---------+----------------------------------+----------+
+|       1 | Consultation - Internal Medicine | 18000.00 |
+|       2 | Fasting Blood Sugar              |  2500.00 |
+|       3 | Amlodipine 5mg                   |  3000.00 |
+|       4 | Metformin 500mg                  |  3600.00 |
+|       5 | Wound dressing                   |  1500.00 |
++---------+----------------------------------+----------+
+5 rows in set (0.00 sec)
+
+--------------
+SELECT invoice_id, total_amount, amount_paid, balance_due            
+FROM   v_invoice_balance WHERE invoice_id = 4
+--------------
+
++------------+--------------+-------------+-------------+
+| invoice_id | total_amount | amount_paid | balance_due |
++------------+--------------+-------------+-------------+
+|          4 |     28600.00 |        0.00 |    28600.00 |
++------------+--------------+-------------+-------------+
+1 row in set (1.09 sec)
+
+--------------
+SELECT '== 2.6 Payments: overpayment refused, then exact settlement ==' AS demo
+--------------
+
++----------------------------------------------------------------+
+| demo                                                           |
++----------------------------------------------------------------+
+| == 2.6 Payments: overpayment refused, then exact settlement == |
++----------------------------------------------------------------+
+1 row in set (0.00 sec)
+
+--------------
+CALL sp_record_payment(4, 50000.00, 'CARD', 'P3-OVER-1')
+--------------
+
+ERROR 1644 (45000) at line 121: Payment exceeds outstanding balance
+--------------
+CALL sp_record_payment(4, 20000.00, 'CARD', 'P3-PART-1')
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CALL sp_record_payment(4,  8600.00, 'CASH', 'P3-FULL-1')
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CALL sp_record_payment(4,   100.00, 'CASH', 'P3-LATE-1')
+--------------
+
+ERROR 1644 (45000) at line 124: Invoice is already PAID or VOID
+--------------
+SELECT payment_id, amount, method, reference FROM payment WHERE invoice_id = 4
+--------------
+
++------------+----------+--------+-----------+
+| payment_id | amount   | method | reference |
++------------+----------+--------+-----------+
+|     196611 | 20000.00 | CARD   | P3-PART-1 |
+|     196612 |  8600.00 | CASH   | P3-FULL-1 |
++------------+----------+--------+-----------+
+2 rows in set (0.00 sec)
+
+--------------
+SELECT i.invoice_id, i.status, b.total_amount, b.amount_paid, b.balance_due
+FROM   invoice i JOIN v_invoice_balance b ON b.invoice_id = i.invoice_id
+WHERE  i.invoice_id = 4
+--------------
+
++------------+--------+--------------+-------------+-------------+
+| invoice_id | status | total_amount | amount_paid | balance_due |
++------------+--------+--------------+-------------+-------------+
+|          4 | PAID   |     28600.00 |    28600.00 |        0.00 |
++------------+--------+--------------+-------------+-------------+
+1 row in set (0.87 sec)
+
+Bye
