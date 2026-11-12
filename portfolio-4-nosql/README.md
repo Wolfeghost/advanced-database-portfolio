@@ -141,23 +141,25 @@ In MySQL this would need either many nullable columns or separate vitals tables 
 | M5 | Search notes for "wheeze inhaler" | Relevance-ranked text search | **Text** index (complaint weighted ×2) |
 | M6 | Penicillin-allergic patients seen in the last 30 days | `$lookup` with a sub-pipeline | Multikey `{allergies}` + `ix_patient_started` |
 
-Results from my run on **MongoDB Atlas (free M0 cluster, replica set `atlas-26pdm4-shard-0`)**, from `evidence/queries_output.txt`:
+Results from my final run (after the timezone label fix) on **MongoDB Atlas (free M0 cluster, replica set `atlas-26pdm4-shard-0`)**, from `evidence/queries_output.txt`:
 
 | Query | Before: plan | Docs examined | ms | After: plan | Keys / docs examined | ms |
 |---|---|---:|---:|---|---:|---:|
-| M1 patient history | COLLSCAN → SORT | 95,744 | 84 | IXSCAN `ix_patient_started` (no SORT) | 6 / 6 | 0 |
-| M2 abnormal labs, Lekki, 30 days | COLLSCAN → SORT | 95,744 | 98 | IXSCAN `ix_branch_started` (no SORT) | 3,840 / 3,840 | 12 |
-| M3 antenatal BP screen | COLLSCAN → SORT | 95,744 | 86 | IXSCAN `ix_antenatal_bp` (partial, no SORT) | 342 / 311 | 1 |
-| M3 without `visit_type` | — | — | — | COLLSCAN (partial index not eligible) | 0 / 95,744 | 79 |
-| M4b malaria by month | — | — | — | IXSCAN `ix_diagnosis_started` → PROJECTION_COVERED | 6,534 / **0** | 19 |
-| M5 text search | — | — | — | TEXT_MATCH on `ix_notes_text` | 9,736 / 4,868 | 39 |
+| M1 patient history | COLLSCAN → SORT | 95,745 | 148 | IXSCAN `ix_patient_started` (no SORT) | 6 / 6 | 0 |
+| M2 abnormal labs, Lekki, 30 days | COLLSCAN → SORT | 95,745 | 92 | IXSCAN `ix_branch_started` (no SORT) | 3,840 / 3,840 | 12 |
+| M3 antenatal BP screen | COLLSCAN → SORT | 95,745 | 88 | IXSCAN `ix_antenatal_bp` (partial, no SORT) | 342 / 311 | 1 |
+| M3 without `visit_type` | — | — | — | COLLSCAN (partial index not eligible) | 0 / 95,745 | 88 |
+| M4b malaria by month | — | — | — | IXSCAN `ix_diagnosis_started` → PROJECTION_COVERED | 6,534 / **0** | 41 |
+| M5 text search | — | — | — | TEXT_MATCH on `ix_notes_text` | 9,736 / 4,868 | 40 |
 
-Index sizes: `_id_` 3.1 MB, `ix_patient_started` 1.3 MB, `ix_branch_started` 1.1 MB, `ix_diagnosis_started` 1.6 MB, **`ix_antenatal_bp` 0.09 MB** (partial: only ~12% of documents), **`ix_notes_text` 10.1 MB** (one entry per distinct word per document, the most expensive index here).
+Index sizes: `_id_` 3.7 MB, `ix_patient_started` 1.3 MB, `ix_branch_started` 1.1 MB, `ix_diagnosis_started` 1.6 MB, **`ix_antenatal_bp` 0.09 MB** (partial: only ~12% of documents), **`ix_notes_text` 10.1 MB** (one entry per distinct word per document, the most expensive index here).
+
+Timings on the shared free tier vary between runs (M1 before: 84 ms in the first run, 148 ms in this one); the plans and document counts are identical every time.
 
 **Analysis**
-- **M1.** The collection scan read all 95,744 documents to return 6. The compound index reads exactly 6 keys and 6 documents. Because the index is already in `started_at` descending order, the in-memory **SORT stage disappears**.
+- **M1.** The collection scan read all 95,745 documents to return 6. The compound index reads exactly 6 keys and 6 documents. Because the index is already in `started_at` descending order, the in-memory **SORT stage disappears**.
 - **M2.** The index narrows the search to Lekki's last 30 days (3,840 documents). The `$elemMatch` on abnormal results is then checked on those documents only, leaving 386. A wider index including `lab_orders.result.abnormal` would read fewer documents, at the cost of a larger multikey index on every encounter. For a daily worklist, 12 ms is acceptable.
-- **M3.** The partial index holds antenatal documents only, which is why it is 0.09 MB against 1–1.6 MB for the full indexes. Without `visit_type: "ANTENATAL"` in the filter, MongoDB cannot prove the index contains every match and falls back to COLLSCAN (79 ms). Partial indexes trade generality for size.
+- **M3.** The partial index holds antenatal documents only, which is why it is 0.09 MB against 1–1.6 MB for the full indexes. Without `visit_type: "ANTENATAL"` in the filter, MongoDB cannot prove the index contains every match and falls back to COLLSCAN (88 ms). Partial indexes trade generality for size.
 - **M4b.** **Covered query**: `docsExamined: 0`. Every field the pipeline needs (`diagnoses.icd10`, `started_at`) is in the index, so no document is read. This is the document-store equivalent of Portfolio 2's covering index (Q4).
 - **M5.** The text index makes free-text search possible at all (`$text` requires it). It is also the largest index, so it should only exist if notes search is a real requirement.
 - **M6.** `$lookup` works (644 penicillin-allergic patients seen in the last 30 days), but it is the exception: every other query reads a single collection, because the model embeds what is read together.
@@ -218,7 +220,7 @@ In a live system, changes would flow from MySQL to MongoDB through change data c
 | U2 schema evolution | 1 encounter with `telemedicine`, 95,744 without; the patient's `visit_summary` updated (0 → 1 visit) |
 | U3 validation | 5 of 5 invalid inserts rejected, error code 121 (DocumentValidationFailure), each naming the rule broken: enum, minItems, maximum, pattern, minimum |
 | U4 transaction | (a) COMMITTED: LEK-3 450 → 420, LEK-4 700 → 640, prescription 4 DISPENSED. (b) ABORTED on the second item: LEK-3 stayed at 420, so the first item's change was rolled back. |
-| T1 time series | 4,800 readings (40 patients × 60 days × 2) stored in 80 buckets; weekly averages show controlled patients falling (e.g. 150/94 → 135/85) and uncontrolled patients flat (~152/95) |
+| T1 time series | 4,800 readings (40 patients × 60 days × 2) stored in 80 buckets; weeks start Sunday 23 Aug 2026; weekly averages show controlled patients falling (e.g. 150/94 → 135/85) and uncontrolled patients flat (~152/95) |
 | T2 rolling-average alert | 32 of 40 patients still at or above 135/85 on the 7-day average |
 
 **Issues found during the run and fixed**
@@ -232,7 +234,7 @@ In a live system, changes would flow from MySQL to MongoDB through change data c
 - [ ] `compass_encounter_document.png`: one antenatal and one paediatric document in Compass, showing different vitals shapes
 - [ ] `compass_validation.png`: Compass → encounters → Validation tab
 - [x] `updates_output.txt`
-- [ ] `queries_output.txt`, `timeseries_output.txt` (re-run after the timezone label fix)
+- [x] `queries_output.txt`, `timeseries_output.txt` (final run, after the timezone label fix)
 - [ ] `compass_explain_m1_before_after.png`: Compass Explain Plan for M1 (COLLSCAN vs IXSCAN)
 - [x] Replica set confirmed in `updates_output.txt` (`atlas-26pdm4-shard-0`)
 

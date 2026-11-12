@@ -183,12 +183,11 @@ heading("M4b Monthly malaria (B54) visits — uses multikey index");
 const m4b = [
   { $match: { "diagnoses.icd10": "B54", started_at: { $gte: DAYS(365), $lt: AS_OF } } },
   { $group: { _id: { $dateTrunc: { date: "$started_at", unit: "month", timezone: "Africa/Lagos" } }, visits: { $sum: 1 } } },
-  { $sort: { _id: 1 } },
-  // Format in Lagos time too: the month starts at 23:00 UTC the day before,
-  // so formatting in UTC would label October as September.
-  { $project: { _id: 0, month: { $dateToString: { date: "$_id", format: "%Y-%m", timezone: "Africa/Lagos" } }, visits: 1 } }
+  { $sort: { _id: 1 } }
 ];
-db.encounters.aggregate(m4b).forEach(r => print(`  ${r.month}  ${r.visits}`));
+// $dateTrunc returns the month start in Lagos time, i.e. 23:00 UTC the day
+// before; +1 hour gives the Lagos date, so October is not labelled September.
+db.encounters.aggregate(m4b).forEach(r => print(`  ${new Date(r._id.getTime() + 3600e3).toISOString().slice(0, 7)}  ${r.visits}`));
 report("M4b malaria by month", db.encounters.explain("executionStats").aggregate(m4b));
 
 // =====================================================================

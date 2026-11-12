@@ -103,9 +103,7 @@ heading("Storage");
 try {
   const ts = db.bp_readings.stats();
   print(`readings: ${db.bp_readings.countDocuments()}`);
-  print(`storage size reported: ${ts.storageSize} bytes`);
-  print("(Atlas shared tiers such as M0 may report a nominal storage size, so do not");
-  print(" read this as bytes per reading; the bucket count below is the useful figure.)");
+  print(`storage size: ${ts.storageSize} bytes  (nominal value on Atlas M0, not bytes per reading)`);
   if (ts.timeseries) print(`buckets: ${ts.timeseries.bucketCount}  (readings are grouped per patient into buckets)`);
 } catch (e) {
   print(`(storage stats not available on this server: ${e.codeName || e.message})`);
