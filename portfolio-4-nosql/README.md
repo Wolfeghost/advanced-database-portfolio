@@ -226,12 +226,13 @@ In a live system, changes would flow from MySQL to MongoDB through change data c
 **Issues found during the run and fixed**
 - Month and week labels in M4b and T1 were first formatted in UTC. In Lagos time a month starts at 23:00 UTC the previous day, so October was labelled September. The labels now use `timezone: "Africa/Lagos"`; the counts were already correct.
 - The Atlas free tier reports a nominal storage size for the time-series collection (4,096 bytes), so it cannot be used as bytes per reading. The bucket count (80) is the meaningful figure.
+- Seed encounter 3 says "Routine antenatal, 20 weeks" in its complaint text, but its generated vitals give `gestational_age_weeks: 15`, because vitals are generated from the encounter ID and do not read the free text. Bulk encounters are consistent; the evidence screenshot uses encounter 21 instead.
 - Some Portfolio 2 appointments assign male patients to O&G doctors (random generator). The export labels those visits GENERAL without pregnancy fields.
 
 ## 7. Evidence checklist (`evidence/`)
 
 - [ ] `import_output.png`: collection counts (20,008 / 95,745 / 14 / 4,800)
-- [ ] `compass_encounter_document.png`: one antenatal and one paediatric document in Compass, showing different vitals shapes
+- [ ] `antenatal_document.png` / `paediatric_document.png`: Atlas Data Explorer documents showing different vitals shapes
 - [ ] `compass_validation.png`: Compass → encounters → Validation tab
 - [x] `updates_output.txt`
 - [x] `queries_output.txt`, `timeseries_output.txt` (final run, after the timezone label fix)
