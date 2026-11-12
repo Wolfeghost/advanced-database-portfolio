@@ -1,0 +1,27 @@
++-------------------------------+---------+----------+----------+
+| Table                         | Op      | Msg_type | Msg_text |
++-------------------------------+---------+----------+----------+
+| lagoscare.patient             | analyze | status   | OK       |
+| lagoscare.appointment         | analyze | status   | OK       |
+| lagoscare.encounter           | analyze | status   | OK       |
+| lagoscare.encounter_diagnosis | analyze | status   | OK       |
+| lagoscare.lab_order           | analyze | status   | OK       |
+| lagoscare.lab_result          | analyze | status   | OK       |
+| lagoscare.invoice             | analyze | status   | OK       |
+| lagoscare.invoice_line        | analyze | status   | OK       |
+| lagoscare.payment             | analyze | status   | OK       |
++-------------------------------+---------+----------+----------+
++---------------------+-----------+
+| table_name          | row_count |
++---------------------+-----------+
+| doctor              |        20 |
+| patient             |     20008 |
+| appointment         |    120007 |
+| encounter           |     95744 |
+| encounter_diagnosis |    133930 |
+| lab_order           |     38241 |
+| lab_result          |     37134 |
+| invoice             |     95744 |
+| invoice_line        |    200936 |
+| payment             |    126302 |
++---------------------+-----------+

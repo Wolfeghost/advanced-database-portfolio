@@ -1,0 +1,34 @@
++-----------------------+---------+----------+----------+
+| Table                 | Op      | Msg_type | Msg_text |
++-----------------------+---------+----------+----------+
+| lagoscare.patient     | analyze | status   | OK       |
+| lagoscare.appointment | analyze | status   | OK       |
+| lagoscare.invoice     | analyze | status   | OK       |
+| lagoscare.lab_order   | analyze | status   | OK       |
++-----------------------+---------+----------+----------+
++----------------------------------+
+| step                             |
++----------------------------------+
+| == Indexes after optimisation == |
++----------------------------------+
++-------------+------------------------------+----------------------------------+
+| TABLE_NAME  | INDEX_NAME                   | columns                          |
++-------------+------------------------------+----------------------------------+
+| appointment | fk_appt_patient              | patient_id                       |
+| appointment | idx_appt_branch_start        | branch_id,scheduled_start        |
+| appointment | idx_appt_start_doctor_status | scheduled_start,doctor_id,status |
+| appointment | PRIMARY                      | appointment_id                   |
+| appointment | uq_appt_doctor_slot          | doctor_id,scheduled_start        |
+| invoice     | idx_invoice_issued           | issued_at                        |
+| invoice     | PRIMARY                      | invoice_id                       |
+| invoice     | uq_invoice_encounter         | encounter_id                     |
+| lab_order   | fk_laborder_test             | lab_test_id                      |
+| lab_order   | idx_laborder_status_ordered  | status,ordered_at                |
+| lab_order   | PRIMARY                      | lab_order_id                     |
+| lab_order   | uq_lab_order_test            | encounter_id,lab_test_id         |
+| patient     | idx_patient_name             | last_name,first_name             |
+| patient     | PRIMARY                      | patient_id                       |
+| patient     | uq_patient_email             | email                            |
+| patient     | uq_patient_hmo_member        | hmo_id,hmo_member_no             |
+| patient     | uq_patient_hospital_no       | hospital_no                      |
++-------------+------------------------------+----------------------------------+

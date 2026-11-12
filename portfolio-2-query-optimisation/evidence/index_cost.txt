@@ -1,0 +1,41 @@
++------------------------+
+| step                   |
++------------------------+
+| == Index sizes (MB) == |
++------------------------+
++-------------+------------------------------+---------+
+| table_name  | index_name                   | size_mb |
++-------------+------------------------------+---------+
+| appointment | PRIMARY                      |    8.52 |
+| appointment | fk_appt_patient              |    4.52 |
+| appointment | idx_appt_branch_start        |    3.52 |
+| appointment | idx_appt_start_doctor_status |    3.52 |
+| appointment | uq_appt_doctor_slot          |    4.52 |
+| invoice     | PRIMARY                      |    4.52 |
+| invoice     | idx_invoice_issued           |    2.52 |
+| invoice     | uq_invoice_encounter         |    2.52 |
+| lab_order   | PRIMARY                      |    2.52 |
+| lab_order   | fk_laborder_test             |    1.52 |
+| lab_order   | idx_laborder_status_ordered  |    1.52 |
+| lab_order   | uq_lab_order_test            |    1.52 |
+| patient     | PRIMARY                      |    2.52 |
+| patient     | idx_patient_name             |    0.48 |
+| patient     | uq_patient_email             |    1.52 |
+| patient     | uq_patient_hmo_member        |    0.44 |
+| patient     | uq_patient_hospital_no       |    0.41 |
++-------------+------------------------------+---------+
++---------------------------------------------------+
+| step                                              |
++---------------------------------------------------+
+| == Write cost: bulk insert of all appointments == |
++---------------------------------------------------+
++----------------------------------------+---------------+-----------+
+| scenario                               | rows_inserted | insert_ms |
++----------------------------------------+---------------+-----------+
+| WITH Portfolio 2 indexes (4 secondary) |        120007 |      4250 |
++----------------------------------------+---------------+-----------+
++-------------------------------------------+---------------+-----------+
+| scenario                                  | rows_inserted | insert_ms |
++-------------------------------------------+---------------+-----------+
+| WITHOUT Portfolio 2 indexes (2 secondary) |        120007 |      3216 |
++-------------------------------------------+---------------+-----------+
