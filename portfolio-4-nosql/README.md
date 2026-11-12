@@ -227,12 +227,15 @@ In a live system, changes would flow from MySQL to MongoDB through change data c
 - Month and week labels in M4b and T1 were first formatted in UTC. In Lagos time a month starts at 23:00 UTC the previous day, so October was labelled September. The labels now use `timezone: "Africa/Lagos"`; the counts were already correct.
 - The Atlas free tier reports a nominal storage size for the time-series collection (4,096 bytes), so it cannot be used as bytes per reading. The bucket count (80) is the meaningful figure.
 - Seed encounter 3 says "Routine antenatal, 20 weeks" in its complaint text, but its generated vitals give `gestational_age_weeks: 15`, because vitals are generated from the encounter ID and do not read the free text. Bulk encounters are consistent; the evidence screenshot uses encounter 21 instead.
+- The Portfolio 2 generator picks first names and dates of birth at random, independent of sex and visit type, so some documents are unrealistic (e.g. encounter 21: an antenatal visit for an 80-year-old with a typically male first name). The export only corrects sex for antenatal visits. A production-quality generator would draw names by sex and restrict antenatal visits to ages 15–49. The evidence screenshot is filtered to plausible ages: `{ visit_type: "ANTENATAL", "patient.age_at_visit": { $gte: 18, $lte: 45 } }`.
 - Some Portfolio 2 appointments assign male patients to O&G doctors (random generator). The export labels those visits GENERAL without pregnancy fields.
 
 ## 7. Evidence checklist (`evidence/`)
 
 - [ ] `import_output.png`: collection counts (20,008 / 95,745 / 14 / 4,800)
-- [ ] `antenatal_document.png` / `paediatric_document.png`: Atlas Data Explorer documents showing different vitals shapes
+- [x] `atlas_cluster_overview.png`: cluster, version 8.0.37, data size 116.86 MB / 512 MB
+- [x] `paediatric_document.png`: paediatric vitals (`resp_rate_pm`, no `bp`)
+- [ ] `antenatal_document.png`: antenatal vitals (`gestational_age_weeks`, `fetal_heart_rate_bpm`, `fundal_height_cm`)
 - [ ] `compass_validation.png`: Compass → encounters → Validation tab
 - [x] `updates_output.txt`
 - [x] `queries_output.txt`, `timeseries_output.txt` (final run, after the timezone label fix)
