@@ -244,6 +244,19 @@ In a live system, changes would flow from MySQL to MongoDB through change data c
 
 ## 8. My notes
 
-<!-- In your own words: which embedding decision you would defend in a
-     verification discussion, what surprised you in the explain output, and
-     one thing you think should never move out of MySQL. -->
+**Design: embed vs reference**
+- I embedded diagnoses, lab results and prescriptions inside each encounter because they belong to that one visit, there are only a few of them, and the doctor always reads them together, so one read returns the whole consultation.
+- I kept patients in their own collection because a patient's visits keep growing over the years and a document has a 16 MB limit; encounters point to the patient with `patient_id` instead.
+
+**What stood out**
+- The patient history query went from scanning all 95,745 documents to reading just 6 once the index was added.
+- The malaria-by-month query read zero documents, because everything it needed was already in the index (a covered query).
+
+**Challenges**
+- The first roadblock was Windows Smart App Control. I did not know something was blocking MongoDB Shell from running in the command prompt until I saw the "Device Guard policy" message and traced it to Smart App Control.
+- The second was missing data during the import: mongoimport could not find the files, so I had to search for the directory where they had been extracted and copy them into the right folder.
+- Both showed me that environment and file-path problems can stop a database task before any database work starts.
+
+**Would I move billing to MongoDB?**
+- No. Payments and stock need strict rules across several records, such as no overpayment and stock never going below zero, even when two cashiers work at the same time.
+- MySQL handles this with foreign keys, CHECK constraints and row locks, as I showed in Portfolio 3, so the clinical record fits MongoDB but the money should stay in MySQL.
