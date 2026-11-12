@@ -141,8 +141,8 @@ Snapshot isolation does not stop this kind of read-then-write anomaly (*write sk
 
 ## 9. Evidence checklist (`evidence/`)
 
-- [ ] `commit_rollback.txt`: output of `02_commit_rollback.sql` (command above)
-- [ ] `procedures_created.png`: routine list at the end of `01_setup.sql`
+- [x] `commit_rollback.txt`: output of `02_commit_rollback.sql` (run on my laptop, MySQL 8.0.46)
+- [x] `setup_output.txt`: routine list at the end of `01_setup.sql` (4 procedures)
 - [ ] `3_0_two_sessions.png`: A0 and B0 showing different connection IDs
 - [ ] `3_1_dirty_read.png`: B1 (1500) and B2 (2000)
 - [ ] `3_2_nonrepeatable_read.png`: B5 (RC: value changed) and B7 (RR: value unchanged)
