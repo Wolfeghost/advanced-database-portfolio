@@ -1,0 +1,27 @@
+ERROR 1062 (23000) at line 14: Duplicate entry 'LC-000001' for key 'patient.uq_patient_hospital_no'
+ERROR 1644 (45000) at line 19: date_of_birth cannot be in the future
+ERROR 3819 (HY000) at line 24: Check constraint 'chk_patient_hmo_pair' is violated.
+ERROR 3819 (HY000) at line 29: Check constraint 'chk_appt_time' is violated.
+ERROR 1062 (23000) at line 35: Duplicate entry '1-2026-11-16 09:00:00' for key 'appointment.uq_appt_doctor_slot'
+ERROR 1452 (23000) at line 41: Cannot add or update a child row: a foreign key constraint fails (`lagoscare`.`appointment`, CONSTRAINT `fk_appt_patient` FOREIGN KEY (`patient_id`) REFERENCES `patient` (`patient_id`))
+ERROR 1644 (45000) at line 46: Staff member must have role DOCTOR to be added to doctor table
+ERROR 3819 (HY000) at line 51: Check constraint 'chk_stock_qty' is violated.
+ERROR 3819 (HY000) at line 56: Check constraint 'chk_payment_amount' is violated.
+ERROR 1451 (23000) at line 61: Cannot delete or update a parent row: a foreign key constraint fails (`lagoscare`.`appointment`, CONSTRAINT `fk_appt_patient` FOREIGN KEY (`patient_id`) REFERENCES `patient` (`patient_id`))
+ERROR 1062 (23000) at line 65: Duplicate entry '4-I10' for key 'encounter_diagnosis.PRIMARY'
+ERROR 1265 (01000) at line 69: Data truncated for column 'status' at row 1
++----------+
+| patients |
++----------+
+|        8 |
++----------+
++--------------+
+| appointments |
++--------------+
+|            7 |
++--------------+
++------------------+
+| quantity_on_hand |
++------------------+
+|               40 |
++------------------+

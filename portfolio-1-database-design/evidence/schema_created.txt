@@ -1,0 +1,25 @@
++---------------------+
+| Tables_in_lagoscare |
++---------------------+
+| appointment         |
+| branch              |
+| department          |
+| diagnosis_code      |
+| doctor              |
+| encounter           |
+| encounter_diagnosis |
+| hmo                 |
+| invoice             |
+| invoice_line        |
+| lab_order           |
+| lab_result          |
+| lab_test            |
+| medication          |
+| patient             |
+| payment             |
+| pharmacy_stock      |
+| prescription        |
+| prescription_item   |
+| staff               |
+| v_invoice_balance   |
++---------------------+
