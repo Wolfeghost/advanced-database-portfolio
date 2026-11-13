@@ -176,4 +176,7 @@ The routing column is derived from shard-key rules: a query can be targeted only
 
 ## 11. My notes
 
-<!-- Short Q&A, as in Portfolio 4. -->
+- **Write safety against speed:** waiting for a majority of the 3 Atlas nodes made writes slower (201 ms against 127 ms with `w:1`). For a clinic I'd accept that for lab results and prescriptions, because losing one after a server failure isn't acceptable. Dashboards and reports can use faster settings and read from secondaries.
+- **Shard key lesson:** a date-based shard key looked balanced over the whole history (1.04×), but **every** new visit landed on the last shard. That hot spot only showed up when I looked at new writes separately. Hashed patient ID spread both old and new data evenly, and keeps a patient's history on one shard.
+- **No stale reads in my test:** I didn't see any, but that's because my laptop in Lagos is about 115 ms from the servers in Paris, which gives the secondaries time to catch up. It doesn't mean stale reads can't happen.
+- **Limitations:** the free tier can't run a real failover test, so I documented how it would be done on a paid cluster instead.
