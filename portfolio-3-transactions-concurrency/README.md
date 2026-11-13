@@ -160,6 +160,7 @@ All concurrency demos were run on my laptop (MySQL 8.0.46, Workbench 8.0, two se
 
 ## 10. My notes
 
-<!-- In your own words: which anomaly surprised you, why the lock is taken
-     before the balance/overlap is read, and what the application should do
-     when it receives error 1213. -->
+- **The 30-second timeout:** this was a bit of a shocker for me. I thought the two-session demos would be smooth sailing, not knowing I'd have to race against time to press Ctrl+Enter in 30 seconds. Workbench cut off session B while it was correctly waiting for a lock. Raising the timeout to 600 seconds fixed it. Then MySQL's own 60-second lock wait limit ended one wait with error 1205, which showed me that waiting transactions don't hang forever.
+- **Highlighting only half a statement:** I once ran an UPDATE without its `WHERE` line, so it tried to change every stock row. The `chk_stock_qty` constraint from Portfolio 1 blocked it and saved the data.
+- **Forgetting `START TRANSACTION`:** without it, Workbench saved each UPDATE immediately, so my ROLLBACK had nothing to undo. That made it very clear what a transaction actually protects.
+- **What the demos proved:** two pharmacists working at the same time lost 100 tablets from the record (1950 instead of 1850), and two cashiers charged a patient twice (−₦6,750). Locking the row with `FOR UPDATE` fixed both: the second session just waited (13.8 seconds in my run) and then carried on with the correct value.
