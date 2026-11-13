@@ -1,6 +1,6 @@
 # Advanced Database Systems Portfolio — MIT 8103
 
-**Student:** Adebowale Ademosu
+**Student:** Adebowale Ademosu (Student ID 301901129)
 
 **Programme:** Master of Information Technology, MIVA Open University
 
@@ -34,21 +34,33 @@
 
 | Area | Technology |
 |---|---|
-| Relational database | MySQL 8.0 (InnoDB) |
+| Relational database | MySQL 8.0.46 (InnoDB), run locally |
 | Client / modelling | MySQL Workbench 8.0 |
-| NoSQL | MongoDB |
-| Cloud / distributed | Microsoft Azure (Azure Database for MySQL Flexible Server, MongoDB-compatible service) |
+| NoSQL | MongoDB Atlas 8.0 (free M0 three-member replica set), mongosh, MongoDB Database Tools |
+| Cloud / distributed | MongoDB Atlas replica set (tested); Azure Database for MySQL Flexible Server (design) |
 | Version control | Git / GitHub (private repository) |
+
+## Portfolios
+
+| # | Portfolio | What it contains |
+|---|---|---|
+| 1 | [Database design](portfolio-1-database-design/) | ER model, normalised schema, seed data, constraint and trigger tests |
+| 2 | [Query processing and optimisation](portfolio-2-query-optimisation/) | 20,000-patient bulk data, six workload queries, EXPLAIN ANALYZE before and after indexing, index write cost |
+| 3 | [Transactions and concurrency](portfolio-3-transactions-concurrency/) | Stored procedures, commit/rollback/savepoint, two-session demos of dirty read, non-repeatable read, lost update, double payment, double booking and deadlock |
+| 4 | [NoSQL (MongoDB)](portfolio-4-nosql/) | Document model with validators, indexed queries, updates and transactions, time-series blood pressure readings |
+| 5 | [Distributed and cloud design](portfolio-5-distributed-cloud/) | Replication and consistency tests on Atlas, shard key simulation, Azure deployment and security design |
+
+Each portfolio folder has its own README (design decisions, results, evidence checklist and my notes) and an `evidence/` folder with the outputs and screenshots from my own runs.
 
 ## Repository Structure
 
 ```
 advanced-database-portfolio/
-├── portfolio-1-database-design/        ER model, schema, constraints, normalisation
-├── portfolio-2-query-optimisation/     Queries, EXPLAIN plans, indexing, performance analysis
+├── portfolio-1-database-design/          ER model, schema, constraints, normalisation
+├── portfolio-2-query-optimisation/       Queries, EXPLAIN plans, indexing, performance analysis
 ├── portfolio-3-transactions-concurrency/ Commit, rollback, isolation, locking demos
-├── portfolio-4-nosql/                  MongoDB model for the same clinic
-├── portfolio-5-distributed-cloud/      Replication, sharding, Azure deployment
+├── portfolio-4-nosql/                    MongoDB model for the same clinic
+├── portfolio-5-distributed-cloud/        Replication, sharding, Azure design
 └── README.md
 ```
 
@@ -56,8 +68,9 @@ advanced-database-portfolio/
 
 | Date | Portfolio | Work completed |
 |---|---|---|
-| | Portfolio 1 | Case study, ER diagram, schema, seed data, constraint tests |
-| | Portfolio 2 | |
-| | Portfolio 3 | |
-| | Portfolio 4 | |
-| | Portfolio 5 | |
+| 12–13 Nov 2026 | Portfolio 1 | Case study, ER diagram, schema, seed data, constraint tests; run on MySQL 8.0.46 with evidence and EER diagram |
+| 12–13 Nov 2026 | Portfolio 2 | Bulk data, baseline and optimised EXPLAIN ANALYZE plans, index cost test, Visual Explain screenshots |
+| 12–13 Nov 2026 | Portfolio 3 | Procedures, commit/rollback demos and six two-session concurrency demos with 30 screenshots |
+| 12–13 Nov 2026 | Portfolio 4 | MySQL export, Atlas import, validators, queries and indexes, updates and transactions, time series |
+| 12–13 Nov 2026 | Portfolio 5 | Replication and consistency tests, shard key simulation, Azure architecture and security design |
+| 13 Nov 2026 | All | Final documentation submitted on the LMS (Ademosu_Adebowale_301901129_Documentation) |
