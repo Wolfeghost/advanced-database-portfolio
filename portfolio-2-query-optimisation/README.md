@@ -140,6 +140,6 @@ The two extra appointment indexes make bulk inserts about **32% slower** (4,250 
 
 ## 9. My notes
 
-<!-- Write in your own words: which result surprised you, what you would
-     check first next time a report is slow, and anything that behaved
-     differently on your machine. -->
+- **Biggest surprise:** in Q3, adding an index on its own made the query *slower*, from 219 ms to 391 ms. I assumed indexes always speed things up. Reading the plan showed the real problem was the join order, and rewriting the query fixed it.
+- **Most satisfying result:** Q2 went from 149 ms to 1.2 ms just by not wrapping the date column in `DATE()`. Visual Explain showed it clearly: 59,860 rows read before against 160 after, and the query cost dropped from 27,393 to 128.
+- **Trade-off:** the extra indexes made inserts about 32% slower, so I now see indexes as a cost that each one has to justify, not a free improvement.
