@@ -91,4 +91,7 @@ Evidence in `evidence/` (run on my laptop, MySQL 8.0.46, using the MySQL command
 
 ## My notes
 
-<!-- Write in your own words: why you chose these entities, anything that went wrong when running the scripts, and what you changed. -->
+- **Why a clinic:** I chose a clinic because it has real day-to-day operations that need a proper database: appointments, consultations, lab tests, pharmacy stock and billing split between patients and HMOs. That gave me enough to work with for all five portfolios.
+- **Hardest part:** modelling doctors as a type of staff (a subtype table sharing the staff ID), and working out invoice balances. I learned to calculate the balance in a view rather than storing it, so it can never go out of date.
+- **What went wrong:** one of my constraint tests (T6) used patient ID 9999 as a "patient that doesn't exist". After I loaded the Portfolio 2 bulk data, that patient *did* exist, so the test stopped failing. I changed it to 999999. It taught me that test data has to stay valid as the database grows.
+- **Evidence:** all 12 constraint tests were rejected on my own laptop, and the EER diagram Workbench reverse-engineered matched my design.
